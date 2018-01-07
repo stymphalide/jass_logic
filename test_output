@@ -1,0 +1,47 @@
+.........................................................
+
+  1) test evaluates after set type correctly (ActionTest)
+     test/jass_logic/action_test.exs:54
+     Assertion with == failed
+     code:  assert expected == Action.eval_action_space(game_state)
+     left:  [play_card: %{card: #MapSet<[%JassLogic.Card{color: "clubs",
+                 number: "ace"},
+                %JassLogic.Card{color: "clubs", number: "jack"},
+                %JassLogic.Card{color: "clubs", number: "king"},
+                %JassLogic.Card{color: "diamonds", number: "9"},
+                %JassLogic.Card{color: "diamonds", number: "ace"},
+                %JassLogic.Card{color: "diamonds", number: "jack"},
+                %JassLogic.Card{color: "hearts", number: "jack"},
+                %JassLogic.Card{color: "spades", number: "jack"},
+                %JassLogic.Card{color: "spades", number: "king"}]>,
+               wys: %JassLogic.Wys{cards: #MapSet<[%JassLogic.Card{color: "clubs",
+                  number: "jack"},
+                 %JassLogic.Card{color: "diamonds", number: "jack"},
+                 %JassLogic.Card{color: "hearts", number: "jack"},
+                 %JassLogic.Card{color: "spades", number: "jack"}]>,
+                name: :four_the_same}}]
+     right: [play_card: %{card: #MapSet<[%JassLogic.Card{color: "clubs",
+                 number: "ace"},
+                %JassLogic.Card{color: "clubs", number: "jack"},
+                %JassLogic.Card{color: "clubs", number: "king"},
+                %JassLogic.Card{color: "diamonds", number: "9"},
+                %JassLogic.Card{color: "diamonds", number: "ace"},
+                %JassLogic.Card{color: "diamonds", number: "jack"},
+                %JassLogic.Card{color: "hearts", number: "jack"},
+                %JassLogic.Card{color: "spades", number: "jack"},
+                %JassLogic.Card{color: "spades", number: "king"}]>,
+               wys: #MapSet<[%JassLogic.Wys{cards: #MapSet<[%JassLogic.Card{color: "clubs",
+                   number: "jack"},
+                  %JassLogic.Card{color: "diamonds", number: "jack"},
+                  %JassLogic.Card{color: "hearts", number: "jack"},
+                  %JassLogic.Card{color: "spades", number: "jack"}]>,
+                 name: :four_the_same}]>}]
+     stacktrace:
+       test/jass_logic/action_test.exs:61: (test)
+
+......
+
+Finished in 0.1 seconds
+64 tests, 1 failure
+
+Randomized with seed 372344

@@ -2,9 +2,10 @@ defmodule GameTest do
   use ExUnit.Case
 
   alias JassLogic.Game
-  alias JassLogic.Card
+  alias JassLogic.{GameState, Card, Group}
 
-  @initial_state %JassLogic.GameState{cards: %{"pl1" => [%Card{color: "hearts", number: "jack"},
+
+  @initial_state %GameState{cards: %{"pl1" => [%Card{color: "hearts", number: "jack"},
     %Card{color: "spades", number: "jack"}, %Card{color: "spades", number: "king"},
     %Card{color: "diamonds", number: "9"}, %Card{color: "diamonds", number: "jack"},
     %Card{color: "diamonds", number: "ace"}, %Card{color: "clubs", number: "jack"},
@@ -24,8 +25,8 @@ defmodule GameTest do
     %Card{color: "spades", number: "ace"}, %Card{color: "diamonds", number: "queen"},
     %Card{color: "diamonds", number: "king"}, %Card{color: "clubs", number: "10"},
     %Card{color: "clubs", number: "queen"}]}, gameType: nil,
-   groups: [%JassLogic.Group{players: ["pl1", "pl3"], points: 0, wonCards: []},
-    %JassLogic.Group{players: ["pl2", "pl4"], points: 0, wonCards: []}],
+   groups: [%Group{players: ["pl1", "pl3"], points: 0, wonCards: []},
+    %Group{players: ["pl2", "pl4"], points: 0, wonCards: []}],
    onTurnPlayer: "pl1", players: ["pl1", "pl2", "pl3", "pl4"], proposed_wyses: [],
    round: 0, stoeck: nil, table: [nil, nil, nil, nil], turn: 0, valid_wyses: []}
 
