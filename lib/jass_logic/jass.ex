@@ -3,6 +3,8 @@ defmodule JassLogic.Jass do
   Schieber Jass Simulation
   GenServer for the game
   """
+  @timeout 24* 60 * 60 *1000 # Timeout after one day.
+
   use GenServer, start: {__MODULE__, :start_link, []}, restart: :transient
 
   alias JassLogic.Game
@@ -28,9 +30,21 @@ defmodule JassLogic.Jass do
 
   # Callbacks
   def init(params) do
+    send(self(), {:set_state, params})
+    {:ok, start_game(params)}
+  end
+  def handle_info({:set_state, params}, _state_data) do
+    name = generate_name(params.players)
     state_data =
-      start_game(params)
-    {:ok, state_data}
+      case :ets.lookup(:state_data, name) do
+        [] -> start_game(params)
+        [{_key, state_data}] -> state_data
+      end
+      :ets.insert(:state_data, {name, state_data})
+      {:noreply, state_data, @timeout}
+  end
+  def handle_info(:timeout, state_data) do
+    {:stop, {:shutdown, :timeout}, state_data}
   end
   def handle_call(action, _from, %{init: init, action_space: action_space, actions: actions, game_state: game_state}) do
     if Validation.validate_action(action_space, action) do
@@ -50,7 +64,13 @@ defmodule JassLogic.Jass do
     end
   end
 
+  def terminate({:shutdown, :timeout}, state_data) do
+    :ets.delete(:state_data, generate_name(state_data.init.players))
+    :ok
+  end
+  def terminate(_reason, _state), do: :ok
 
+  # Helpers
   defp start_game(params = %{players: players}) do
     game_state = GameState.new(players, params)
     action_space = Action.eval_action_space(game_state)
@@ -59,10 +79,11 @@ defmodule JassLogic.Jass do
 
   
   defp reply_error(state_data) do
-    {:reply, :error, state_data}
+    {:reply, :error, state_data, @timeout}
   end
 
   defp reply_success(state_data, reply) do
-    {:reply, reply, state_data}
+    :ets.insert(:state_data, {generate_name(state_data.game_state.players), state_data})
+    {:reply, reply, state_data, @timeout}
   end
 end
