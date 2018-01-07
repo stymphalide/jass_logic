@@ -10,6 +10,7 @@ defmodule JassLogic.Application do
     children = [
       # Starts a worker by calling: JassLogic.Worker.start_link(arg)
       # {JassLogic.Worker, arg},
+      {Registry, keys: :unique, name: Registry.Jass},
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
