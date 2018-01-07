@@ -164,16 +164,16 @@ defmodule JassLogic.Card do
 
     `points/2`
   """
-  def points("up", %{number: number}) do
+  def points("up", %Card{number: number}) do
     up_scores(number) * Globals.multiplier("up")
   end
-  def points("down", %{number: number}) do
+  def points("down", %Card{number: number}) do
     down_scores(number) * Globals.multiplier("down")
   end
-  def points(game_type, %{number: number, color: game_type}) do
+  def points(game_type, %Card{number: number, color: game_type}) do
     trumpf_scores(number) * Globals.multiplier(game_type)
   end
-  def points(game_type, %{number: number}) do
+  def points(game_type, %Card{number: number}) do
     basic_scores(number) * Globals.multiplier(game_type)
   end
 

@@ -1,12 +1,19 @@
 defmodule JassLogic.Jass do
   @moduledoc """
   Schieber Jass Simulation
+  GenServer for the game
   """
+  use GenServer, {__MODULE__, :start_link, []}, restart: :transient
 
   alias JassLogic.Game
   alias JassLogic.GameState
   alias JassLogic.Action
   alias JassLogic.Validation
+
+
+  def via_tuple(players) do
+    
+  end
 
   @doc """
     start_game(players, opts \\ %{onTurnPlayer, groups})
@@ -44,7 +51,7 @@ defmodule JassLogic.Jass do
       next_actions =
         [action | actions]
 
-      {:ok, {init, next_actions, next_game_state, new_action_space,}}
+      {:ok, {init, next_actions, next_game_state, new_action_space}}
     else
       {:error, {:reason, "invalid action"}}
     end

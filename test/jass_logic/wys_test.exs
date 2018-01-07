@@ -33,27 +33,27 @@ defmodule WysTest do
     cards =
       [%JassLogic.Card{color: "hearts", number: "jack"}, %JassLogic.Card{color: "diamonds", number: "jack"}, %JassLogic.Card{color: "spades", number: "jack"}, %JassLogic.Card{color: "clubs", number: "jack"}]
       |> MapSet.new()
-    assert 600 == Wys.points("up", %{name: :four_the_same, cards: cards})
+    assert 600 == Wys.points("up", %Wys{name: :four_the_same, cards: cards})
     # Nells correctly
     cards =
       [%JassLogic.Card{color: "hearts", number: "9"}, %JassLogic.Card{color: "diamonds", number: "9"}, %JassLogic.Card{color: "spades", number: "9"}, %JassLogic.Card{color: "clubs", number: "9"}]
       |> MapSet.new()
-    assert 300 == Wys.points("spades", %{name: :four_the_same, cards: cards})
+    assert 300 == Wys.points("spades", %Wys{name: :four_the_same, cards: cards})
     # 5 in a row
     cards = 
       [%JassLogic.Card{color: "hearts", number: "8"}, %JassLogic.Card{color: "hearts", number: "9"}, %JassLogic.Card{color: "hearts", number: "10"}, %JassLogic.Card{color: "hearts", number: "jack"}, %JassLogic.Card{color: "hearts", number: "queen"}]
       |> MapSet.new()
-    assert 100 == Wys.points("hearts", %{name: :n_in_a_row, cards: cards})
+    assert 100 == Wys.points("hearts", %Wys{name: :n_in_a_row, cards: cards})
     # 4 in a row
     cards =
       [%JassLogic.Card{color: "hearts", number: "7"}, %JassLogic.Card{color: "hearts", number: "8"}, %JassLogic.Card{color: "hearts", number: "9"}, %JassLogic.Card{color: "hearts", number: "10"} ]
       |> MapSet.new()
-    assert Wys.points("clubs", %{name: :n_in_a_row, cards: cards}) == 100
+    assert Wys.points("clubs", %Wys{name: :n_in_a_row, cards: cards}) == 100
     # 3 in a row
     cards = 
       [%JassLogic.Card{color: "hearts", number: "8"}, %JassLogic.Card{color: "hearts", number: "9"}, %JassLogic.Card{color: "hearts", number: "10"} ]
       |> MapSet.new()
-    assert Wys.points("down", %{name: :n_in_a_row, cards: cards}) == 60
+    assert Wys.points("down", %Wys{name: :n_in_a_row, cards: cards}) == 60
   end
   test "ordering/4 orders wyses correctly" do
     four_the_sames = 

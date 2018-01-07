@@ -9,7 +9,9 @@ defmodule JassLogic.Action do
     :next_round  # Sent by server
     :end_game # Sent by server
   """
+  #alias JassLogic.Action
   alias JassLogic.Globals
+  alias JassLogic.Player
   alias JassLogic.Card
   alias JassLogic.GameState
   alias JassLogic.Wys
@@ -56,7 +58,6 @@ defmodule JassLogic.Action do
     # 9 *(length possible_wyses + 1) In there
     [{:play_card, %{wys: possible_wyses, card: cards_player}}]
   end
-
   # If it is the first round and any turn and the player has the stoeck
   def eval_action_space(%GameState{round: 0,
                           players: players,
@@ -68,8 +69,11 @@ defmodule JassLogic.Action do
                         }) do
     cards_player = cards[onTurnPlayer]
 
+    last_player =
+      Player.last_player(players, onTurnPlayer)
+
     possible_cards = 
-      Card.find_possible(cards_player, Table.order_table(table, players, onTurnPlayer), game_type)
+      Card.find_possible(cards_player, Table.order_table(table, players, last_player), game_type)
       |> MapSet.new()
 
     possible_wyses =
@@ -80,11 +84,12 @@ defmodule JassLogic.Action do
         {:play_card_with_stoeck, %{wys: possible_wyses, card: possible_cards}}]
   end
   # If it is the first round and any turn
-  def eval_action_space(%GameState{round: 0, players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table}) do
+  def eval_action_space(%GameState{round: 0, turn: turn, players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table}) do
     cards_player = cards[onTurnPlayer]
-
-    possible_cards = 
-      Card.find_possible(cards_player, Table.order_table(table, players, onTurnPlayer), game_type)
+    first_player =
+      Player.first(players, onTurnPlayer, turn)
+    possible_cards =
+      Card.find_possible(cards_player, Table.order_table(table, players, first_player), game_type)
       |> MapSet.new()
 
     possible_wyses =
@@ -101,22 +106,26 @@ defmodule JassLogic.Action do
     [{:play_card, player_cards}, {:play_card_with_stoeck, player_cards}]
   end
   # If it is any round and the first turn
-  def eval_action_space(%GameState{onTurnPlayer: onTurnPlayer, cards: cards,table: [nil, nil, nil, nil],
-                        }) do
+  def eval_action_space(%GameState{onTurnPlayer: onTurnPlayer, cards: cards,table: [nil, nil, nil, nil],}) do
     [{:play_card, MapSet.new(cards[onTurnPlayer])}]
   end
   # If it is any round and any turn and the player has the stoeck
-  def eval_action_space(%GameState{players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table, stoeck: onTurnPlayer,}) do
+  def eval_action_space(%GameState{turn: turn, players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table, stoeck: onTurnPlayer,}) do
+    first_player =
+      Player.first(players, onTurnPlayer, turn)
     possible_cards = 
-      Card.find_possible(cards[onTurnPlayer], Table.order_table(table, players, onTurnPlayer), game_type)
+      Card.find_possible(cards[onTurnPlayer], Table.order_table(table, players, first_player), game_type)
       |> MapSet.new()
     # 9 *(length possible_wyses + 1) In there
     [{:play_card, possible_cards}, {:play_card_with_stoeck, possible_cards}]
   end
   # If it is any round and any turn
-  def eval_action_space(%GameState{players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table,}) do
+  def eval_action_space(%GameState{turn: turn, players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table,}) do
+    first_player =
+      Player.first(players, onTurnPlayer, turn)
+
     possible_cards = 
-      Card.find_possible(cards[onTurnPlayer], Table.order_table(table, players, onTurnPlayer), game_type)
+      Card.find_possible(cards[onTurnPlayer], Table.order_table(table, players, first_player), game_type)
       |> MapSet.new()
     # 9 *(length possible_wyses + 1) In there
     [{:play, possible_cards}]

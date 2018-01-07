@@ -1,6 +1,5 @@
 defmodule JassLogic.GameState do
   alias JassLogic.Card
-  alias JassLogic.Globals
   alias JassLogic.Group
   alias JassLogic.Table
 
@@ -18,8 +17,8 @@ defmodule JassLogic.GameState do
              table: Table.new(),
              gameType: nil,
              stoeck: nil,
-             proposed_wyses: [[], [], [], []],
-             valid_wyses: [],
+             proposed_wyses: %{},
+             valid_wyses: %{},
             ]
 
 
@@ -33,7 +32,10 @@ defmodule JassLogic.GameState do
       %__MODULE__{players: players, 
                   onTurnPlayer: opts.onTurnPlayer || Enum.random(players), 
                   groups: opts.groups || Group.initialise_groups(players), 
-                  cards: create_cards(players)}
+                  cards: create_cards(players),
+                  proposed_wyses: %{},
+                  valid_wyses: %{},
+                }
     else
       :error
     end

@@ -9,9 +9,9 @@ defmodule JassLogic.Game do
     round => int
     turn => int
     table => [card || nil] length 4
-    gameType => string 
+    gameType => string o
     stoeck => nil || player name
-    proposed_wyses => [{player name, [wys]}]
+    proposed_wyses => %{player_name => MapSet Card}
     valid_wyses => [{player name, [wys]}]
 
   A Wys looks like this:
@@ -26,13 +26,8 @@ defmodule JassLogic.Game do
     :play_card_with_stoeck # Sent by players
     :next_round # Sent by server
 	"""
-  alias JassLogic.Card
-  alias JassLogic.Player
-  alias JassLogic.Globals
-  alias JassLogic.GameState
-  alias JassLogic.Group
-  alias JassLogic.Wys
-  alias JassLogic.Table
+
+  alias JassLogic.{Card, Player, Globals, GameState, Group, Wys, Table}
 
   @stoeck_points 20
 
@@ -90,52 +85,54 @@ defmodule JassLogic.Game do
   end
   # Play Cards Cases 
   # first round finished ==> add wys to proposed wyses,  evaluate valid wyses and add points, play_card
-  defp evaluate_game_state( %GameState{round: 0, 
-                                      turn: 3, 
-                                      players: players,
-                                      proposed_wyses: proposed_wyses, 
-                                      groups: groups, 
-                                      onTurnPlayer: onTurnPlayer,
-                                      gameType: game_type,
-                                      } = game_state, 
-                                    {:play_card, %{card: card, wys: wys}}) do
-    new_proposed_wyses = [{onTurnPlayer, wys} | proposed_wyses]
+  defp evaluate_game_state( %GameState{round: 0, turn: 3, players: players, proposed_wyses: proposed_wyses, groups: groups, onTurnPlayer: onTurnPlayer, gameType: game_type} = game_state, {:play_card, %{card: card, wys: wys}}) do
+    new_proposed_wyses = Map.put(proposed_wyses, onTurnPlayer, wys)
     main_group =
       Group.get_group_by_player(groups, Player.next_player(players, onTurnPlayer))
     valid_wyses =
       Wys.find_valid_wyses(new_proposed_wyses, game_type, main_group.players)
 
-    new_groups =
+    new_points =
       valid_wyses
-      |> Enum.map(fn {player, wys} -> 
-        Group.update_points_at_player(groups, player, Wys.points(game_type, wys))
+      |> Enum.map(fn {player, wyses} ->
+        if !Enum.empty? wyses do
+          {player, Enum.reduce(wyses, 0, fn w, acc -> acc + Wys.points(game_type, w) end)}
+        else
+          {player, 0}
+        end
       end)
-      |> Enum.reduce(fn [%Group{points: new_points1} = new_group1, %Group{points: new_points2} = new_group2], [%Group{points: old_points1}, %Group{points: old_points2}] -> 
-        [%Group{new_group1 | points: old_points1 + new_points1}, %Group{new_group2 | points: old_points2 + new_points2}]
+    new_groups =
+      new_points
+      |> Enum.reduce(groups, fn {player, points}, acc -> 
+          Group.update_points_at_player(acc, player, points)
       end)
 
     new_game_state =
       %GameState{game_state | valid_wyses: valid_wyses, groups: new_groups, proposed_wyses: new_proposed_wyses}
-    evaluate_game_state(new_game_state, {:play_card, card})
+    next_turn(new_game_state, card)
   end
-  defp evaluate_game_state(%GameState{round: 0, 
-                             proposed_wyses: proposed_wyses, 
-                             onTurnPlayer: onTurnPlayer} = game_state, 
-                          {:play_card, %{card: card, wys: wys}}) do
+  defp evaluate_game_state(%GameState{round: 0, proposed_wyses: proposed_wyses, onTurnPlayer: onTurnPlayer} = game_state, {:play_card, %{card: card, wys: wys}}) do
     new_game_state =
-      %GameState{game_state | proposed_wyses: [{onTurnPlayer, wys} | proposed_wyses]}
-    evaluate_game_state(new_game_state, {:play_card, card})
+      %GameState{game_state | proposed_wyses: Map.put(proposed_wyses, onTurnPlayer, wys)}
+    next_turn(new_game_state, card)
   end
-  defp evaluate_game_state(%GameState{gameType: game_type, groups: groups, onTurnPlayer: onTurnPlayer} = game_state, {:play_card_with_stoeck, card}) do
+  defp evaluate_game_state(%GameState{round: 0, gameType: game_type, groups: groups, onTurnPlayer: onTurnPlayer} = game_state, {:play_card_with_stoeck, action} ) do
     points =
-      @stoeck_points*Globals.multiplier(game_type)
+      @stoeck_points * Globals.multiplier(game_type)
     new_game_state =
-      %GameState{game_state | groups: Group.update_points_at_player(groups, onTurnPlayer, points)}
-    evaluate_game_state(new_game_state, {:play_card, card})
+      %GameState{game_state | stoeck: nil, groups: Group.update_points_at_player(groups, onTurnPlayer, points)}
+    evaluate_game_state(new_game_state, {:play_card, action})
   end
-  defp evaluate_game_state(game_state, {:play_card, card}), do: next_turn(game_state, card)
+  defp evaluate_game_state(%GameState{round: game_round, gameType: game_type, groups: groups, onTurnPlayer: onTurnPlayer} = game_state, {:play_card_with_stoeck, card}) when game_round > 0 do
+    points =
+      @stoeck_points * Globals.multiplier(game_type)
+    new_game_state =
+      %GameState{game_state | stoeck: nil, groups: Group.update_points_at_player(groups, onTurnPlayer, points)}
+    next_turn(new_game_state, card)
+  end
+  defp evaluate_game_state(game_state = %GameState{round: game_round}, {:play_card, card}) when game_round > 0, do: next_turn(game_state, card)
   # Next round case
-  defp evaluate_game_state(game_state, :next_round), do: next_round(game_state)
+  defp evaluate_game_state(%GameState{} = game_state, :next_round), do: next_round(game_state)
   # If nothing fits, thats an error
   defp evaluate_game_state(_game_state, _invalid_action), do: :error
 
@@ -146,25 +143,18 @@ defmodule JassLogic.Game do
   # => Distributes scores
   # => Empties the table
   # => Updates the round and turn counter
-  defp next_round(%GameState{players: players,
-                    onTurnPlayer: onTurnPlayer,
-                    gameType: game_type,
-                    cards: cards,
-                    groups: groups,
-                    table: table,
-                    round: game_round,
-                    } = game_state) do
+  defp next_round(%GameState{players: players, onTurnPlayer: onTurnPlayer, gameType: game_type, groups: groups, table: table, round: game_round,} = game_state) do
     newOnTurnPlayer = 
       determine_round_winner(table, players, game_type, onTurnPlayer)
     
     new_points = 
       if Enum.any? groups, &match?(&1.wonCards) do
-        sum_points(cards, game_type, game_round) + 100*Globals.multiplier(game_type)
+        sum_points(table, game_type, game_round) + 100*Globals.multiplier(game_type)
       else
-        sum_points(cards, game_type, game_round)
+        sum_points(table, game_type, game_round)
       end
     %GameState{game_state | onTurnPlayer: newOnTurnPlayer, 
-                            groups: Group.update_group_at_player(groups, newOnTurnPlayer, new_points, cards), 
+                            groups: Group.update_group_at_player(groups, newOnTurnPlayer, new_points, table), 
                             turn: 0, 
                             round: game_round + 1, 
                             table: Table.new(),
@@ -184,7 +174,6 @@ defmodule JassLogic.Game do
   end
   defp match?(wonCards) when length(wonCards) == 9, do: true
   defp match?(_wonCards), do: false
-
 
   # Makes player, card pairs and determines which player has played the highest card
   # Return that player
@@ -218,16 +207,7 @@ defmodule JassLogic.Game do
                 card) do
 
     new_table =
-      table
-      |> Enum.zip(players)
-      |> Enum.map(fn {old_card, player} -> 
-        if player == onTurnPlayer do
-          card
-        else
-          old_card
-        end
-      end)
-
+      Table.update_table(table, players, onTurnPlayer, card)
 
     new_cards =
       %{cards | onTurnPlayer => List.delete(cards[onTurnPlayer], card)}

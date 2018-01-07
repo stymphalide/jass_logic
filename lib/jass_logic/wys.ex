@@ -59,7 +59,7 @@ defmodule JassLogic.Wys do
 
   """
   # Clauses for wyses
-  def points(game_type, %{name: :four_the_same, cards: cards}) do
+  def points(game_type, %Wys{name: :four_the_same, cards: cards}) do
     jacks = 
       generate_four_the_same("jack")
     nells = 
@@ -73,7 +73,7 @@ defmodule JassLogic.Wys do
         100 * Globals.multiplier(game_type)
     end
   end
-  def points(game_type, %{name: :n_in_a_row, cards: cards}) do
+  def points(game_type, %Wys{name: :n_in_a_row, cards: cards}) do
     case MapSet.size(cards) do
       3 ->
         20 * Globals.multiplier(game_type)

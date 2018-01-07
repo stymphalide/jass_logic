@@ -5,7 +5,6 @@ defmodule JassLogic.Validation do
 	And distributing points (While not actually updating the group)
 
 	"""
-  alias JassLogic.Globals
   alias JassLogic.Card
 
 	@doc """
@@ -38,9 +37,10 @@ defmodule JassLogic.Validation do
 
 	Returns a bool that is true when the player is allowed to play the card under these conditions
 
-  `validate_card/3`
+  `validate_card/4`
 	"""
   # @TODO This is horrible, refactor this at some stage.
+  def validate_card(_card, _cards_player, [nil, nil, nil, nil], _game_type), do: true
 	def validate_card(card, cards_player, cards_on_table, game_type) do # Assumes a sorted list of cards_on_table
     cond do
       cards_on_table |> length == 0 ->  # case 1
