@@ -7,9 +7,7 @@ defmodule JassTest do
   alias JassLogic.Card
 
     doctest Jass
-
-    {:ok, init} = GameState.new(["pl1", "pl2", "pl3", "pl4"])
-    @init init
+    @init GameState.new(["pl1", "pl2", "pl3", "pl4"])
 
     test "updates game correctly with valid action" do
       valid_action = {:set_game_type, "swap"}

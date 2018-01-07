@@ -99,7 +99,7 @@ defmodule JassLogic.Validation do
 
   # Case 3b iii.2.a
   defp is_highest(cards, card, game_type) do
-    Enum.max_by([card | cards], fn(c) -> Globals.order(game_type, hd(cards).color, c) end) == card
+    Enum.max_by([card | cards], fn(c) -> Card.ordering(game_type, hd(cards).color, c) end) == card
   end
 
   # Case 3b iii 2.b.i (Recursion)
@@ -125,6 +125,22 @@ defmodule JassLogic.Validation do
     Returns a bool
   """
   def validate_action(action_space, action) do
-    action in action_space
+     Enum.any?(action_space, &validate_in_action_space(&1, action))
+  end
+
+  defp validate_in_action_space({name, %{wys: wyses, card: cards}}, {name, %{wys: wys, card: card}}) do
+    MapSet.subset?(wys, wyses) and MapSet.member?(cards, card)
+  end
+  defp validate_in_action_space({name, arguments}, {name, argument}) do
+    MapSet.member? arguments, argument
+  end
+  defp validate_in_action_space(:end_game, :end_game) do
+    true
+  end
+  defp validate_in_action_space(:next_round, :next_round) do
+    true
+  end
+  defp validate_in_action_space(_actions, _action) do
+    false
   end
 end

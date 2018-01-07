@@ -7,9 +7,10 @@ defmodule JassLogic.Card do
   """
   alias __MODULE__
   alias JassLogic.Globals
-
+  alias JassLogic.Validation
   @colors Globals.colors()
   @numbers Globals.numbers()
+
   @doc """
     new(color, number) ==> %Card{}
     Takes two strings, color and number and returns a %Card{struct}
@@ -18,17 +19,17 @@ defmodule JassLogic.Card do
     iex> Card.new("hearts", "6")
     %Card{color: "hearts", number: "6"}
 
+    iex> Card.new("6", "hearts")
+    %Card{color: "hearts", number: "6"}
+
     iex> Card.new("up", "5")
     :error
 
     `new/2`
   """
-  def new(color, number) when color in @colors and number in @numbers do
-    %__MODULE__{color: color, number: number}
-  end
-  def new(_color, _number) do
-    :error
-  end
+  def new(color, number) when color in @colors and number in @numbers, do: %__MODULE__{color: color, number: number}
+  def new(number, color)  when color in @colors and number in @numbers, do: %__MODULE__{color: color, number: number}
+  def new(_color, _number), do: :error
 
   @doc """
     generate_deck() ==> List of length 36
@@ -50,13 +51,19 @@ defmodule JassLogic.Card do
     next_card(card) ==> %Card{}
     Returns the next higher card of the same color, nil if the card is an ace
 
+    iex> Card.next_card(%Card{number: "6", color: "hearts"})
+    %Card{number: "7", color: "hearts"}
+
+    iex> Card.next_card(%Card{number: "ace", color: "hearts"})
+    nil
+
     `next_card/1`
   """
   def next_card(%Card{number: "ace"}), do: nil
   def next_card(%Card{number: number, color: color}) do
     {^number, next_number} =
-      Enum.zip @numbers, Globals.rotate_list(@numbers)
-      |> Enum.find(fn n -> 
+      Enum.zip(@numbers, Globals.rotate_list(@numbers))
+      |> Enum.find(fn {n, _new} -> 
         n == number
       end)
     Card.new(color, next_number)
@@ -173,65 +180,77 @@ defmodule JassLogic.Card do
   ## HELPERS
 
   # Helpers for the sorting functions
-  defp basic_order("6"),        do: 1
-  defp basic_order("7"),        do: 2
-  defp basic_order("8"),        do: 3
-  defp basic_order("9"),        do: 4
-  defp basic_order("10"),       do: 5
-  defp basic_order("jack"),     do: 6
-  defp basic_order("queen"),    do: 7
-  defp basic_order("king"),     do: 8
-  defp basic_order("ace"),      do: 9
+  def basic_order("6"),        do: 1
+  def basic_order("7"),        do: 2
+  def basic_order("8"),        do: 3
+  def basic_order("9"),        do: 4
+  def basic_order("10"),       do: 5
+  def basic_order("jack"),     do: 6
+  def basic_order("queen"),    do: 7
+  def basic_order("king"),     do: 8
+  def basic_order("ace"),      do: 9
 
-  defp trumpf_order("6"),       do: 1
-  defp trumpf_order("7"),       do: 2
-  defp trumpf_order("8"),       do: 3
-  defp trumpf_order("9"),       do: 8
-  defp trumpf_order("10"),      do: 4
-  defp trumpf_order("jack"),    do: 9
-  defp trumpf_order("queen"),   do: 5
-  defp trumpf_order("king"),    do: 6
-  defp trumpf_order("ace"),     do: 7
+  def trumpf_order("6"),       do: 1
+  def trumpf_order("7"),       do: 2
+  def trumpf_order("8"),       do: 3
+  def trumpf_order("9"),       do: 8
+  def trumpf_order("10"),      do: 4
+  def trumpf_order("jack"),    do: 9
+  def trumpf_order("queen"),   do: 5
+  def trumpf_order("king"),    do: 6
+  def trumpf_order("ace"),     do: 7
 
-  defp reversed_order("6"),     do: 9
-  defp reversed_order("7"),     do: 8
-  defp reversed_order("8"),     do: 7
-  defp reversed_order("9"),     do: 6
-  defp reversed_order("10"),    do: 5
-  defp reversed_order("jack"),  do: 4
-  defp reversed_order("queen"), do: 3
-  defp reversed_order("king"),  do: 2
-  defp reversed_order("ace"),   do: 1
+  def reversed_order("6"),     do: 9
+  def reversed_order("7"),     do: 8
+  def reversed_order("8"),     do: 7
+  def reversed_order("9"),     do: 6
+  def reversed_order("10"),    do: 5
+  def reversed_order("jack"),  do: 4
+  def reversed_order("queen"), do: 3
+  def reversed_order("king"),  do: 2
+  def reversed_order("ace"),   do: 1
 
   # Helpers for the points function
-  defp basic_scores("ace"),   do: 11
-  defp basic_scores("10"),    do: 10
-  defp basic_scores("king"),  do:  4
-  defp basic_scores("queen"), do:  3
-  defp basic_scores("jack"),  do:  2
-  defp basic_scores(_),       do:  0
+  def basic_scores("ace"),   do: 11
+  def basic_scores("10"),    do: 10
+  def basic_scores("king"),  do:  4
+  def basic_scores("queen"), do:  3
+  def basic_scores("jack"),  do:  2
+  def basic_scores(_),       do:  0
 
-  defp up_scores("ace"),      do: 11
-  defp up_scores("10"),       do: 10
-  defp up_scores("8"),        do:  8
-  defp up_scores("king"),     do:  4
-  defp up_scores("queen"),    do:  3
-  defp up_scores("jack"),     do:  2
-  defp up_scores(_),          do:  0
+  def up_scores("ace"),      do: 11
+  def up_scores("10"),       do: 10
+  def up_scores("8"),        do:  8
+  def up_scores("king"),     do:  4
+  def up_scores("queen"),    do:  3
+  def up_scores("jack"),     do:  2
+  def up_scores(_),          do:  0
 
-  defp down_scores("6"),      do: 11
-  defp down_scores("10"),     do: 10
-  defp down_scores("8"),      do:  8
-  defp down_scores("king"),   do:  4
-  defp down_scores("queen"),  do:  3
-  defp down_scores("jack"),   do:  2
-  defp down_scores(_),        do:  0
+  def down_scores("6"),      do: 11
+  def down_scores("10"),     do: 10
+  def down_scores("8"),      do:  8
+  def down_scores("king"),   do:  4
+  def down_scores("queen"),  do:  3
+  def down_scores("jack"),   do:  2
+  def down_scores(_),        do:  0
 
-  defp trumpf_scores("jack"), do: 20
-  defp trumpf_scores("9"),    do: 14
-  defp trumpf_scores("10"),   do: 10
-  defp trumpf_scores("queen"),do:  3
-  defp trumpf_scores("king"), do:  4
-  defp trumpf_scores("ace"),  do: 11
-  defp trumpf_scores(_),      do:  0
+  def trumpf_scores("jack"), do: 20
+  def trumpf_scores("9"),    do: 14
+  def trumpf_scores("10"),   do: 10
+  def trumpf_scores("queen"),do:  3
+  def trumpf_scores("king"), do:  4
+  def trumpf_scores("ace"),  do: 11
+  def trumpf_scores(_),      do:  0
+
+
+  @doc """
+    find_possible(cards_player, cards_on_table, game_type) ==> [Card]
+
+  """
+  def find_possible(cards_player, cards_on_table, game_type) do
+    Enum.filter cards_player, fn card ->
+      Validation.validate_card(card, cards_player, cards_on_table, game_type)
+    end
+  end
+
 end

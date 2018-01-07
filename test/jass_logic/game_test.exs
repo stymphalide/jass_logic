@@ -34,7 +34,7 @@ defmodule GameTest do
   doctest Game
   test "with valid actions returns correct game state" do
     # 1
-    {:ok, game_state } = Game.eval_game(@initial_state, [{:set_game_type, "swap"}])
+    {:ok, game_state} = Game.eval_game(@initial_state, [{:set_game_type, "swap"}])
     assert game_state.onTurnPlayer == "pl3"
     assert game_state.gameType == "swap"
     # 2

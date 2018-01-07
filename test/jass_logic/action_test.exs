@@ -2,6 +2,11 @@ defmodule ActionTest do
   use ExUnit.Case
 
   alias JassLogic.Action
+  alias JassLogic.Globals
+  alias JassLogic.Card
+  alias JassLogic.Game
+  alias JassLogic.Wys
+
 
   @initial_state %JassLogic.GameState{cards: %{"pl1" => [%{color: "hearts", number: "jack"},
     %{color: "spades", number: "jack"}, %{color: "spades", number: "king"},
@@ -31,7 +36,27 @@ defmodule ActionTest do
   doctest Action
   test "evaluates the initial action space correctly" do
     # After initialised game.
-    {:set_game_type, "swap"}
-    assert [] == Action.eval_action_space(@initial_state)
+    possible_types = Globals.game_types() |> MapSet.new()
+    expected = [{:set_game_type, possible_types}]
+    
+    assert expected == Action.eval_action_space(@initial_state)
   end
+  test "evaluates the after swap action space correctly" do
+    action = {:set_game_type, "swap"}
+    {:ok, game_state} = Game.eval_game(@initial_state, [action])
+
+    possible_types = tl(Globals.game_types()) |> MapSet.new
+    expected = [{:set_game_type_after_swap, possible_types}]
+
+    assert expected == Action.eval_action_space(game_state)
+  end
+  test "evaluates after set type correctly" do
+    actions = [{:set_game_type, "diamonds"}]
+    {:ok, game_state} = Game.eval_game(@initial_state, actions)
+    cards = @initial_state.cards["pl1"] |> MapSet.new()
+    wyses = %Wys{name: :four_the_same, cards: Wys.generate_wys_cards(:four_the_same, Card.new("hearts", "jack"))}
+    expected = [{:play_card, %{wys: wyses, card: cards}}]
+    assert expected == Action.eval_action_space(game_state)
+  end
+
 end

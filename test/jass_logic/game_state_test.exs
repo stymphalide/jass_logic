@@ -8,7 +8,7 @@ defmodule GameStateTest do
   
   doctest GameState
   test "new with valid players works" do
-    {:ok, game_state} = GameState.new(@valid_players)  
+    game_state = GameState.new(@valid_players)  
     assert game_state.players == @valid_players
   end
   test "new with invalid players yields error" do
@@ -17,13 +17,13 @@ defmodule GameStateTest do
     end
   end
   test "new with options works" do
-    {:ok, groups} = 
+    groups = 
       Group.initialise_groups(@valid_players)
     new_groups =
     Enum.map(groups, fn group -> 
         %Group{group |  points: 42}
       end)
-    {:ok, game_state} = GameState.new(@valid_players, %{onTurnPlayer: "pl1", groups: new_groups})
+    game_state = GameState.new(@valid_players, %{onTurnPlayer: "pl1", groups: new_groups})
     assert game_state.onTurnPlayer == "pl1"
     assert (hd game_state.groups).points == 42
   end

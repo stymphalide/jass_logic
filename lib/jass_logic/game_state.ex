@@ -2,6 +2,8 @@ defmodule JassLogic.GameState do
   alias JassLogic.Card
   alias JassLogic.Globals
   alias JassLogic.Group
+  alias JassLogic.Table
+
   @enforce_keys [:players, 
                  :onTurnPlayer, 
                  :groups,
@@ -13,7 +15,7 @@ defmodule JassLogic.GameState do
              cards: %{},
              round: 0,
              turn: 0,
-             table: [nil, nil, nil, nil],
+             table: Table.new(),
              gameType: nil,
              stoeck: nil,
              proposed_wyses: [[], [], [], []],
@@ -60,6 +62,6 @@ defmodule JassLogic.GameState do
   end
     # Returns a sorted list of cards
   defp sort_cards(cards) do
-    Enum.sort_by(cards, fn(c) -> Globals.sorting(c) end)
+    Enum.sort_by(cards, fn(c) -> Card.sorting(c) end)
   end
 end

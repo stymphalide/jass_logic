@@ -1,18 +1,19 @@
 defmodule JassLogic.Action do
   @moduledoc """
     An action is a tuple with the following values
-    {:set_game_type, "swap" || "up" || "down" || "hearts" || "diamonds" || "spades" || "clubs"} # Sent by players
-    {:set_game_type_after_swap, "up" || "down" || "hearts" || "diamonds" || "spades" || "clubs"} # Sent by players
-    {:play_card, card} # Sent by players
-    {:play_card, %{wys: wys, card: card}} # Sent by player in first round
-    {:play_card_with_stoeck, card} # Sent by players with stoeck
+    {:set_game_type, MapSet game_types} # Sent by players
+    {:set_game_type_after_swap, MapSet game_types} # Sent by players
+    {:play_card, MapSet Card} # Sent by players
+    {:play_card, %{wys: MapSet Wys, card: MapSet Card}} # Sent by player in first round
+    {:play_card_with_stoeck, MapSet Card} # Sent by players with stoeck
     :next_round  # Sent by server
+    :end_game # Sent by server
   """
   alias JassLogic.Globals
   alias JassLogic.Card
   alias JassLogic.GameState
-  alias JassLogic.Validation
   alias JassLogic.Wys
+  alias JassLogic.Table
 
   @doc """
   eval_action_space(game_state) ==> #MapSet<[actions]>
@@ -21,65 +22,39 @@ defmodule JassLogic.Action do
   `eval_action_space/1`
   """
   # If there is no game type set, one can only set a new game_type
-  def eval_action_space(%GameState{gameType: nil}) do
-    actions =
-    Enum.map Globals.game_types(), fn type ->
-      {:set_game_type, type}
-    end
-    MapSet.new(actions)
-  end
+  def eval_action_space(%GameState{gameType: nil}), do: [{:set_game_type, MapSet.new(Globals.game_types())}]
   # If there is the swap game type set, one can only set a new game_type without swapping
   def eval_action_space(%GameState{gameType: "swap"}) do
     Globals.game_types()
     |> tl()
-    |> Enum.map(fn type -> 
-      {:set_game_type_after_swap, type}
-    end)
+    |> (fn types -> 
+      [{:set_game_type_after_swap, MapSet.new(types)}]
+    end).()
   end
   # If it is the last round
   def eval_action_space(%GameState{round: 9}) do
-    []
+    [:end_game]
   end
   # If it is the last turn
   def eval_action_space(%GameState{turn: 4}) do
     [:next_round]
   end
   # If it is the first round and the first turn and the player on Turn has the stoeck
-  def eval_action_space(%GameState{round: 0,
-                          onTurnPlayer: onTurnPlayer,
-                          cards: cards,
-                          table: [nil, nil, nil, nil],
-                          stoeck: onTurnPlayer,
-                        }) do
+  def eval_action_space(%GameState{round: 0, onTurnPlayer: onTurnPlayer, cards: cards, table: [nil, nil, nil, nil], stoeck: onTurnPlayer,}) do
     cards_player =
-      cards[onTurnPlayer]
+      MapSet.new(cards[onTurnPlayer])
     possible_wyses =
-      Wys.find_wyses(cards_player)
-    # 9 *(length possible_wyses + 1) In there
-    Enum.map cards_player, fn card ->
-      for wys <- possible_wyses do
-        [{:play_card, %{wys: wys, card: card}},
-        {:play_card_with_stoeck, %{wys: wys, card: card}}]
-      end
-    end
-    |> List.flatten()
+      Wys.find_possible_wyses(cards_player)
+    [{:play_card_with_stoeck, %{wys: possible_wyses, card: cards_player}}]
   end
   # If it is the first round and first turn
-  def eval_action_space(%GameState{round: 0,
-                          onTurnPlayer: onTurnPlayer,
-                          cards: cards,
-                          table: [nil, nil, nil, nil],
-                        }) do
-    cards_player = cards[onTurnPlayer]
+  def eval_action_space(%GameState{round: 0, onTurnPlayer: onTurnPlayer, cards: cards, table: [nil, nil, nil, nil],}) do
+    cards_player = 
+      MapSet.new(cards[onTurnPlayer])
     possible_wyses =
-      Wys.find_wyses(cards_player)
+      Wys.find_possible_wyses(cards_player)
     # 9 *(length possible_wyses + 1) In there
-    Enum.map cards_player, fn card ->
-      for wys <- possible_wyses do
-        {:play_card, %{wys: wys, card: card}}
-      end
-    end
-    |> List.flatten()
+    [{:play_card, %{wys: possible_wyses, card: cards_player}}]
   end
 
   # If it is the first round and any turn and the player has the stoeck
@@ -93,140 +68,57 @@ defmodule JassLogic.Action do
                         }) do
     cards_player = cards[onTurnPlayer]
 
-    {cards_on_table, _players} =
-      table
-      |> Enum.zip(players)
-      |> order_table(onTurnPlayer)
-      |> Enum.unzip()
+    possible_cards = 
+      Card.find_possible(cards_player, Table.order_table(table, players, onTurnPlayer), game_type)
+      |> MapSet.new()
 
+    possible_wyses =
+      Wys.find_possible_wyses(cards_player)
+
+    # 9 *(length possible_wyses + 1) In there
+    [{:play_card, %{wys: possible_wyses, card: possible_cards}},
+        {:play_card_with_stoeck, %{wys: possible_wyses, card: possible_cards}}]
+  end
+  # If it is the first round and any turn
+  def eval_action_space(%GameState{round: 0, players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table}) do
+    cards_player = cards[onTurnPlayer]
 
     possible_cards = 
-      Enum.filter cards_player, fn card ->
-        Validation.validate_card(card, cards_player, cards_on_table, game_type)
-      end
+      Card.find_possible(cards_player, Table.order_table(table, players, onTurnPlayer), game_type)
+      |> MapSet.new()
 
     possible_wyses =
       Wys.find_possible_wyses(cards_player)
     # 9 *(length possible_wyses + 1) In there
-    Enum.map possible_cards, fn card ->
-      for wys <- possible_wyses do
-        [{:play_card, %{wys: wys, card: card}},
-        {:play_card_with_stoeck, %{wys: wys, card: card}}]
-      end
-    end
-    |> List.flatten()
-  end
-  # If it is the first round and any turn
-  def eval_action_space(%GameState{round: 0,
-                          players: players,
-                          onTurnPlayer: onTurnPlayer,
-                          cards: cards,
-                          gameType: game_type,
-                          table: table,
-                        }) do
-    cards_player = cards[onTurnPlayer]
-    {cards_on_table, _players} =
-      table
-      |> Enum.zip(players)
-      |> order_table(onTurnPlayer)
-      |> Enum.unzip()
 
-
-    possible_cards = 
-      Enum.filter cards_player, fn card ->
-        Validation.validate_card(card, cards_player, cards_on_table, game_type)
-      end
-
-    possible_wyses =
-      Wys.find_wyses(cards_player)
-    # 9 *(length possible_wyses + 1) In there
-    Enum.map possible_cards, fn card ->
-      for wys <- possible_wyses do
-        {:play_card, %{wys: wys, card: card}}
-      end
-    end
-    |> List.flatten()
+    [{:play_card, %{wys: possible_wyses, card: possible_cards}}]
   end
 
   # If it is any round and the first turn and the player has the stoeck
-  def eval_action_space(%GameState{onTurnPlayer: onTurnPlayer, 
-                          cards: cards,
-                          table: [nil, nil, nil, nil],
-                          stoeck: onTurnPlayer,
-                        }) do
-
-    Enum.map cards[onTurnPlayer], fn card ->
-      [{:play_card, card},
-      {:play_card_with_stoeck, card}]
-    end
-    |> List.flatten()
+  def eval_action_space(%GameState{onTurnPlayer: onTurnPlayer, cards: cards, table: [nil, nil, nil, nil], stoeck: onTurnPlayer,}) do
+    player_cards =
+      MapSet.new(cards[onTurnPlayer])
+    [{:play_card, player_cards}, {:play_card_with_stoeck, player_cards}]
   end
   # If it is any round and the first turn
-  def eval_action_space(%GameState{onTurnPlayer: onTurnPlayer, 
-                          cards: cards,
-                          table: [nil, nil, nil, nil],
+  def eval_action_space(%GameState{onTurnPlayer: onTurnPlayer, cards: cards,table: [nil, nil, nil, nil],
                         }) do
-    Enum.map cards[onTurnPlayer], fn card ->
-      {:play_card, card}
-    end
+    [{:play_card, MapSet.new(cards[onTurnPlayer])}]
   end
   # If it is any round and any turn and the player has the stoeck
-  def eval_action_space(%GameState{players: players,
-                          onTurnPlayer: onTurnPlayer,
-                          cards: cards,
-                          gameType: game_type,
-                          table: table,
-                          stoeck: onTurnPlayer,
-                        }) do
-    cards_player = cards[onTurnPlayer]
-    {cards_on_table, _players} =
-      table
-      |> Enum.zip(players)
-      |> order_table(onTurnPlayer)
-      |> Enum.unzip()
-
-
+  def eval_action_space(%GameState{players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table, stoeck: onTurnPlayer,}) do
     possible_cards = 
-      Enum.filter cards_player, fn card ->
-        Validation.validate_card(card, cards_player, cards_on_table, game_type)
-      end
+      Card.find_possible(cards[onTurnPlayer], Table.order_table(table, players, onTurnPlayer), game_type)
+      |> MapSet.new()
     # 9 *(length possible_wyses + 1) In there
-    Enum.map possible_cards, fn card ->
-      [{:play_card,  card},
-      {:play_card_with_stoeck, card}]
-    end
-    |> List.flatten()
+    [{:play_card, possible_cards}, {:play_card_with_stoeck, possible_cards}]
   end
   # If it is any round and any turn
-  def eval_action_space(%GameState{players: players,
-                          onTurnPlayer: onTurnPlayer,
-                          cards: cards,
-                          gameType: game_type,
-                          table: table,
-                        }) do
-    cards_player = cards[onTurnPlayer]
-    {cards_on_table, _players} =
-      table
-      |> Enum.zip(players)
-      |> order_table(onTurnPlayer)
-      |> Enum.unzip()
-
+  def eval_action_space(%GameState{players: players, onTurnPlayer: onTurnPlayer, cards: cards, gameType: game_type, table: table,}) do
     possible_cards = 
-      Enum.filter cards_player, fn card ->
-        Validation.validate_card(card, cards_player, cards_on_table, game_type)
-      end
+      Card.find_possible(cards[onTurnPlayer], Table.order_table(table, players, onTurnPlayer), game_type)
+      |> MapSet.new()
     # 9 *(length possible_wyses + 1) In there
-    Enum.map possible_cards, fn card ->
-      {:play_card,  card}
-    end
-    |> List.flatten()
-  end
-
-  # Returns a list of cards, in the order they were played
-  defp order_table(cards_player = [{_card1, onTurnPlayer} | _tail],  onTurnPlayer) do
-    Globals.rotate_list(cards_player)
-  end
-  defp order_table(cards_player,  onTurnPlayer) do
-    order_table(Globals.rotate_list(cards_player), onTurnPlayer)
+    [{:play, possible_cards}]
   end
 end
